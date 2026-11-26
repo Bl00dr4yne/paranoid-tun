@@ -10,9 +10,7 @@ import shutil
 import dns.resolver
 import dns.exception
 
-# Публичный DNS для проверки туннеля, если хотите замените на другой
 DNS_CHECK_SERVER = "1.1.1.1"
-
 TUN_PREFIXES = ("tun", "wg", "tap", "ppp")
 
 class VpnLockApp:
@@ -109,11 +107,10 @@ class VpnLockApp:
         return True
 
     def list_interfaces(self):
-        """Возвращает список имён интерфейсов."""
         try:
             result = subprocess.run([self.ip_path, "link", "show"],
                                     capture_output=True, text=True, check=True)
-            return re.findall(r'^\d+:\s+(\w+):', result.stdout, re.MULTILINE)
+            return re.findall(r'^\d+:\s+([\w\.-]+):', result.stdout, re.MULTILINE)
         except subprocess.CalledProcessError:
             return []
 
@@ -124,7 +121,6 @@ class VpnLockApp:
         return None
 
     def find_physical_interface(self):
-        """Находит физический интерфейс (не lo, не tun/wg/tap/ppp)."""
         for iface in self.list_interfaces():
             if iface == "lo":
                 continue
@@ -159,7 +155,7 @@ class VpnLockApp:
             resolver.resolve("google.com", "A", source=tun_ip)
             self.log(f"[+] dns ok {tun_ip}")
             return True
-        except (dns.exception.Timeout, dns.resolver.NoNameservers, dns.resolver.NXDOMAIN):
+        except (dns.exception.Timeout, dns.resolver.NoNameservers, dns.resolver.NoAnswer):
             self.log("[!] dns fail")
             return False
         except Exception:
@@ -208,22 +204,15 @@ class VpnLockApp:
                 rules += f'            meta mark {mark} accept\n'
             rules += f'            oif "{iface}" accept\n'
 
-        if dns_via_tunnel and tun_alive and not self.dns_via_wlan:
-            rules += f"""
-            oif "{iface}" udp dport 53 accept
-            oif "{iface}" tcp dport 53 accept
-            """
-        elif phys:
-            rules += f"""
-            oif "{phys}" udp dport 53 accept
-            oif "{phys}" tcp dport 53 accept
-            """
+            if dns_via_tunnel and not self.dns_via_wlan:
+                rules += f'            oif "{iface}" udp dport 53 accept\n'
+                rules += f'            oif "{iface}" tcp dport 53 accept\n'
+            elif phys:
+                rules += f'            oif "{phys}" udp dport 53 accept\n'
+                rules += f'            oif "{phys}" tcp dport 53 accept\n'
 
-
-        if phys:
-            rules += f"""
-            oif "{phys}" ip6 daddr fe80::/10 drop
-            """
+            if phys:
+                rules += f'            oif "{phys}" ip6 daddr fe80::/10 drop\n'
 
         rules += """
             meta l4proto tcp ct state new limit rate 10/second burst 5 packets log prefix "VPN_LOCK_DROP: " level warn
