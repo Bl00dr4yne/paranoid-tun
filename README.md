@@ -1,3 +1,5 @@
+<img width="740" height="760" alt="image" src="https://github.com/user-attachments/assets/632d4dbd-fd7a-40ae-8962-2e450630aec7" />
+
 paranoid-tun is a Tkinter-based GUI tool for Linux that prevents packet leaks through interfaces other than the VPN tunnel. It automatically detects active interfaces, identifies the active
 VPN tunnel, and drops any packets attempting to bypass it.
 
