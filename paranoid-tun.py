@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-
-import argparse
 import math
 import os
 import queue
@@ -21,27 +19,23 @@ import dns.resolver
 DNS_CHECK_SERVER = "1.1.1.1"
 TUN_PREFIXES = ("tun", "wg", "tap", "ppp")
 MAX_LOG_LINES = 1500
+FONT = "DejaVu Sans Mono"
 
 PALETTE = {
     "bg": "#0e0d0d",
     "panel": "#151313",
-    "panel_alt": "#1a1717",
     "border": "#2d2727",
-    "border_hi": "#443939",
     "void": "#060505",
     "text": "#cbc4be",
     "muted": "#7d746f",
     "dim": "#4f4946",
     "blood": "#8b1111",
     "blood_bright": "#b82525",
-    "blood_bg": "#210c0c",
     "olive": "#556b2f",
     "olive_bright": "#7a9a45",
-    "olive_bg": "#181f0e",
     "fever": "#9a7424",
     "fever_bg": "#241b0b",
     "flesh": "#f08080",
-    "flesh_dim": "#c77d7d",
     "btn_sec": "#1c1919",
     "btn_sec_hover": "#262121",
     "btn_disabled": "#121010",
@@ -60,7 +54,7 @@ class RawButton(tk.Button):
         hover_bg="#262121",
         fg="#cbc4be",
         border_color="#383030",
-        font=("DejaVu Sans Mono", 10, "bold"),
+        font=(FONT, 10, "bold"),
         padx=12,
         pady=8,
         **kwargs,
@@ -118,22 +112,13 @@ class RawButton(tk.Button):
         )
 
     def set_enabled(self, enabled: bool):
-        if enabled:
-            self.configure(
-                state=tk.NORMAL,
-                bg=self._base_bg,
-                fg=self._base_fg,
-                cursor="hand2",
-                highlightbackground=self._border_color,
-            )
-        else:
-            self.configure(
-                state=tk.DISABLED,
-                bg=PALETTE["btn_disabled"],
-                fg=PALETTE["btn_disabled_fg"],
-                cursor="arrow",
-                highlightbackground=PALETTE["border"],
-            )
+        self.configure(
+            state=tk.NORMAL if enabled else tk.DISABLED,
+            bg=self._base_bg if enabled else PALETTE["btn_disabled"],
+            fg=self._base_fg if enabled else PALETTE["btn_disabled_fg"],
+            cursor="hand2" if enabled else "arrow",
+            highlightbackground=self._border_color if enabled else PALETTE["border"],
+        )
 
 
 class DossierCard(tk.Frame):
@@ -150,7 +135,7 @@ class DossierCard(tk.Frame):
         self.title_lbl = tk.Label(
             self,
             text=f"[ {label} ]",
-            font=("DejaVu Sans Mono", 8, "bold"),
+            font=(FONT, 8, "bold"),
             fg=PALETTE["dim"],
             bg=PALETTE["panel"],
             anchor="w",
@@ -160,7 +145,7 @@ class DossierCard(tk.Frame):
         self.value_lbl = tk.Label(
             self,
             text="---",
-            font=("DejaVu Sans Mono", 10, "bold"),
+            font=(FONT, 10, "bold"),
             fg=PALETTE["text"],
             bg=PALETTE["panel"],
             anchor="w",
@@ -170,7 +155,7 @@ class DossierCard(tk.Frame):
         self.sub_lbl = tk.Label(
             self,
             text="uncharted",
-            font=("DejaVu Sans Mono", 8),
+            font=(FONT, 8),
             fg=PALETTE["muted"],
             bg=PALETTE["panel"],
             anchor="w",
@@ -183,14 +168,10 @@ class DossierCard(tk.Frame):
 
 
 class VpnLockApp:
-    def __init__(self, root, demo_mode=False):
-        self.root = root
-        self.demo_mode = demo_mode
 
-        title = "paranoid_vpn_tunnel"
-        if self.demo_mode:
-            title += " [demo]"
-        self.root.title(title)
+    def __init__(self, root):
+        self.root = root
+        self.root.title("paranoid_vpn_tunnel")
         self.root.geometry("740x760")
         self.root.minsize(660, 620)
         self.root.configure(bg=PALETTE["bg"])
@@ -221,10 +202,8 @@ class VpnLockApp:
         self.tick = 0
         self.spike_energy = 0.0
         self.wave_points = [0.0] * 56
-        self._demo_after_id = None
         self._animate_after_id = None
         self._drain_after_id = None
-        self._demo_tun_up = True
         self._closing = False
         self._ui_queue = queue.SimpleQueue()
 
@@ -233,10 +212,6 @@ class VpnLockApp:
         self._setup_styles()
         self._build_ui()
         self._start_ui_loops()
-
-        if self.demo_mode:
-            self.append_log("[*] demo mode: no root / no real nftables changes")
-
 
     def _setup_styles(self):
         style = ttk.Style(self.root)
@@ -281,7 +256,7 @@ class VpnLockApp:
         tk.Label(
             meta_bar,
             text="WARD // PARANOID-TUNNEL",
-            font=("DejaVu Sans Mono", 8, "bold"),
+            font=(FONT, 8, "bold"),
             fg=PALETTE["dim"],
             bg=PALETTE["panel"],
         ).pack(side=tk.LEFT)
@@ -289,7 +264,7 @@ class VpnLockApp:
         self.metrics_label = tk.Label(
             meta_bar,
             text="RUN 00:00:00  |  BLOCKED: 0",
-            font=("DejaVu Sans Mono", 8, "bold"),
+            font=(FONT, 8, "bold"),
             fg=PALETTE["muted"],
             bg=PALETTE["panel"],
         )
@@ -304,7 +279,7 @@ class VpnLockApp:
         self.status_label = tk.Label(
             status_col,
             text="neur0typical",
-            font=("DejaVu Sans Mono", 14, "bold"),
+            font=(FONT, 14, "bold"),
             fg=PALETTE["blood_bright"],
             bg=PALETTE["panel"],
             anchor="w",
@@ -314,7 +289,7 @@ class VpnLockApp:
         self.substatus_label = tk.Label(
             status_col,
             text="walking in the gray park. nothing is filtered yet.",
-            font=("DejaVu Sans Mono", 8),
+            font=(FONT, 8),
             fg=PALETTE["muted"],
             bg=PALETTE["panel"],
             anchor="w",
@@ -330,11 +305,7 @@ class VpnLockApp:
         wave_box.pack(side=tk.RIGHT)
 
         self.wave_canvas = tk.Canvas(
-            wave_box,
-            width=210,
-            height=46,
-            bg=PALETTE["void"],
-            highlightthickness=0,
+            wave_box, width=210, height=46, bg=PALETTE["void"], highlightthickness=0
         )
         self.wave_canvas.pack()
 
@@ -369,7 +340,7 @@ class VpnLockApp:
             hover_bg="#668038",
             fg="#f0ece6",
             border_color=PALETTE["olive_bright"],
-            font=("DejaVu Sans Mono", 13, "bold"),
+            font=(FONT, 13, "bold"),
             pady=10,
             command=self.start_lock,
         )
@@ -382,7 +353,7 @@ class VpnLockApp:
             hover_bg=PALETTE["blood_bright"],
             fg="#f0ece6",
             border_color=PALETTE["blood_bright"],
-            font=("DejaVu Sans Mono", 13, "bold"),
+            font=(FONT, 13, "bold"),
             pady=10,
             command=self.stop_lock,
         )
@@ -399,7 +370,7 @@ class VpnLockApp:
             hover_bg=PALETTE["btn_sec_hover"],
             fg=PALETTE["muted"],
             border_color=PALETTE["border"],
-            font=("DejaVu Sans Mono", 9),
+            font=(FONT, 9),
             padx=10,
             pady=6,
             command=self.toggle_dns_wlan,
@@ -413,7 +384,7 @@ class VpnLockApp:
             hover_bg=PALETTE["btn_sec_hover"],
             fg=PALETTE["text"],
             border_color=PALETTE["border"],
-            font=("DejaVu Sans Mono", 9),
+            font=(FONT, 9),
             padx=10,
             pady=6,
             command=self.toggle_log_pause,
@@ -428,7 +399,7 @@ class VpnLockApp:
             hover_bg=PALETTE["btn_sec_hover"],
             fg=PALETTE["muted"],
             border_color=PALETTE["border"],
-            font=("DejaVu Sans Mono", 9),
+            font=(FONT, 9),
             padx=10,
             pady=6,
             command=self.clear_log,
@@ -451,7 +422,7 @@ class VpnLockApp:
         tk.Label(
             log_top,
             text="Anamnesis",
-            font=("DejaVu Sans Mono", 10, "bold"),
+            font=(FONT, 10, "bold"),
             fg=PALETTE["text"],
             bg=PALETTE["panel"],
         ).pack(side=tk.LEFT)
@@ -459,7 +430,7 @@ class VpnLockApp:
         self.feed_badge = tk.Label(
             log_top,
             text="[-] dormant  |  policy: open",
-            font=("DejaVu Sans Mono", 8, "bold"),
+            font=(FONT, 8, "bold"),
             fg=PALETTE["dim"],
             bg=PALETTE["panel"],
         )
@@ -485,7 +456,7 @@ class VpnLockApp:
             insertbackground=PALETTE["flesh"],
             selectbackground="#3a1616",
             selectforeground="#f5e6e6",
-            font=("DejaVu Sans Mono", 9),
+            font=(FONT, 9),
             relief=tk.FLAT,
             bd=0,
             highlightthickness=0,
@@ -507,14 +478,23 @@ class VpnLockApp:
             "drop_tag",
             foreground="#f5d0d0",
             background=PALETTE["blood"],
-            font=("DejaVu Sans Mono", 8, "bold"),
+            font=(FONT, 8, "bold"),
         )
         self.log_area.tag_configure("drop_msg", foreground=PALETTE["flesh"])
-
 
     def _start_ui_loops(self):
         self._drain_ui_queue()
         self._animate_ui()
+
+    def _cancel_after(self, *attrs):
+        for attr in attrs:
+            after_id = getattr(self, attr, None)
+            if after_id is not None:
+                try:
+                    self.root.after_cancel(after_id)
+                except Exception:
+                    pass
+                setattr(self, attr, None)
 
     def _drain_ui_queue(self):
         if self._closing:
@@ -575,13 +555,9 @@ class VpnLockApp:
             )
             if self.last_tun_state is True:
                 if self.drop_count == 0:
-                    self.substatus_label.configure(
-                        text="filtering outside noise. only the tunnel exists."
-                    )
+                    self.substatus_label.configure(text="filtering outside noise. only the tunnel exists.")
                 elif self.drop_count < 10:
-                    self.substatus_label.configure(
-                        text="something outside is knocking. holding the line."
-                    )
+                    self.substatus_label.configure(text="something outside is knocking. holding the line.")
                 else:
                     self.substatus_label.configure(
                         text=f"running faster. {self.drop_count} shadows stopped at the gate."
@@ -602,8 +578,7 @@ class VpnLockApp:
     def _render_waveform(self, line_color):
         c = self.wave_canvas
         c.delete("all")
-        w = 210
-        h = 46
+        w, h = 210, 46
         mid = h / 2.0
 
         c.create_line(0, mid, w, mid, fill="#1c1818")
@@ -618,13 +593,10 @@ class VpnLockApp:
         step = w / max(1, len(self.wave_points) - 1)
         coords = []
         for idx, v in enumerate(self.wave_points):
-            x = idx * step
-            y = mid - v * (mid - 5)
-            coords.extend((x, y))
+            coords.extend((idx * step, mid - v * (mid - 5)))
 
         if len(coords) >= 4:
             c.create_line(*coords, fill=line_color, width=1.5)
-
 
     def log(self, msg, is_drop=False):
         if self._closing:
@@ -673,43 +645,23 @@ class VpnLockApp:
 
     def on_close(self):
         self._closing = True
-        for after_id in (self._animate_after_id, self._drain_after_id):
-            if after_id is not None:
-                try:
-                    self.root.after_cancel(after_id)
-                except Exception:
-                    pass
-        self._animate_after_id = None
-        self._drain_after_id = None
+        self._cancel_after("_animate_after_id", "_drain_after_id")
         if self.is_active:
             self.stop_lock()
         self.root.destroy()
 
-
     def check_dependencies(self):
-        if self.demo_mode:
-            return True
-        missing = []
-        if not self.nft_path:
-            missing.append("nft")
-        if not self.journalctl_path:
-            missing.append("journalctl")
-        if not self.ip_path:
-            missing.append("ip")
+        tools = (("nft", self.nft_path), ("journalctl", self.journalctl_path), ("ip", self.ip_path))
+        missing = [name for name, path in tools if not path]
         if missing:
             messagebox.showerror("fail", "missing:\n" + "\n".join(missing))
             return False
         return True
 
     def list_interfaces(self):
-        if self.demo_mode:
-            return ["lo", "wlp3s0", "wg0"]
         try:
             result = subprocess.run(
-                [self.ip_path, "link", "show"],
-                capture_output=True,
-                text=True,
-                check=True,
+                [self.ip_path, "link", "show"], capture_output=True, text=True, check=True
             )
             return re.findall(r"^\d+:\s+([\w\.-]+):", result.stdout, re.MULTILINE)
         except subprocess.CalledProcessError:
@@ -732,18 +684,9 @@ class VpnLockApp:
     def get_iface_ip(self, iface):
         if not iface:
             return None
-        if self.demo_mode:
-            if iface == "wg0":
-                return "10.66.66.2" if self._demo_tun_up else None
-            if iface == "wlp3s0":
-                return "192.168.1.42"
-            return None
         try:
             result = subprocess.run(
-                [self.ip_path, "-4", "addr", "show", iface],
-                capture_output=True,
-                text=True,
-                check=True,
+                [self.ip_path, "-4", "addr", "show", iface], capture_output=True, text=True, check=True
             )
             m = re.search(r"inet\s+(\d+\.\d+\.\d+\.\d+)", result.stdout)
             return m.group(1) if m else None
@@ -755,10 +698,6 @@ class VpnLockApp:
         if not tun_ip:
             self.log(f"[!] fail ip {iface}")
             return False
-        if self.demo_mode:
-            time.sleep(0.6)
-            self.log(f"[+] dns ok {tun_ip}")
-            return True
         try:
             resolver = dns.resolver.Resolver()
             resolver.nameservers = [DNS_CHECK_SERVER]
@@ -775,16 +714,10 @@ class VpnLockApp:
             return False
 
     def detect_vpn_marks(self):
-        if self.demo_mode:
-            self.log("[*] mark 0xca6c")
-            return ["0xca6c"]
         marks = set()
         try:
             result = subprocess.run(
-                [self.ip_path, "rule", "show"],
-                capture_output=True,
-                text=True,
-                check=True,
+                [self.ip_path, "rule", "show"], capture_output=True, text=True, check=True
             )
             for m in re.finditer(r"fwmark\s+(0x[0-9a-fA-F]+)", result.stdout):
                 val = m.group(1).lower()
@@ -792,83 +725,65 @@ class VpnLockApp:
                     marks.add(val)
         except subprocess.CalledProcessError:
             self.log("[!] ip rule fail")
-        if marks:
-            self.log(f"[*] mark {', '.join(sorted(marks))}")
-        else:
-            self.log("[*] no mark")
-        return sorted(marks)
+        ordered = sorted(marks)
+        self.log(f"[*] mark {', '.join(ordered)}" if ordered else "[*] no mark")
+        return ordered
 
     def table_exists(self):
-        if self.demo_mode:
-            return False
         proc = subprocess.run(
-            [self.nft_path, "list", "table", "inet", "vpn_lock"],
-            capture_output=True,
-            text=True,
+            [self.nft_path, "list", "table", "inet", "vpn_lock"], capture_output=True, text=True
         )
         return proc.returncode == 0
 
+    def _delete_nft_table(self):
+        subprocess.run(
+            [self.nft_path, "delete", "table", "inet", "vpn_lock"], capture_output=True, text=True
+        )
+
     def build_nft_script(self, iface, dns_via_tunnel, marks, tun_alive):
         phys = self.phys_iface
-        rules = """
-            oif "lo" accept
-            ip daddr 127.0.0.0/8 accept
-            ip6 daddr ::1 accept
-            ct state established,related accept
-        """
-
+        lines = [
+            'oif "lo" accept',
+            "ip daddr 127.0.0.0/8 accept",
+            "ip6 daddr ::1 accept",
+            "ct state established,related accept",
+        ]
         if tun_alive:
-            for mark in marks:
-                rules += f'            meta mark {mark} accept\n'
-            rules += f'            oif "{iface}" accept\n'
-
-            if dns_via_tunnel and not self.dns_via_wlan:
-                rules += f'            oif "{iface}" udp dport 53 accept\n'
-                rules += f'            oif "{iface}" tcp dport 53 accept\n'
-            elif phys:
-                rules += f'            oif "{phys}" udp dport 53 accept\n'
-                rules += f'            oif "{phys}" tcp dport 53 accept\n'
-
+            lines.extend(f"meta mark {mark} accept" for mark in marks)
+            lines.append(f'oif "{iface}" accept')
+            dns_iface = iface if (dns_via_tunnel and not self.dns_via_wlan) else phys
+            if dns_iface:
+                lines.append(f'oif "{dns_iface}" udp dport 53 accept')
+                lines.append(f'oif "{dns_iface}" tcp dport 53 accept')
             if phys:
-                rules += f'            oif "{phys}" ip6 daddr fe80::/10 drop\n'
-
-        rules += """
-            meta l4proto tcp ct state new limit rate 10/second burst 5 packets log prefix "VPN_LOCK_DROP: " level warn
-            meta l4proto udp limit rate 10/second burst 5 packets log prefix "VPN_LOCK_DROP: " level warn
-        """
-
-        return f"""
-        table inet vpn_lock {{
-            chain output {{
-                type filter hook output priority 0; policy drop;
-                {rules}
-            }}
-        }}
-        """
+                lines.append(f'oif "{phys}" ip6 daddr fe80::/10 drop')
+        lines.extend([
+            'meta l4proto tcp ct state new limit rate 10/second burst 5 packets log prefix "VPN_LOCK_DROP: " level warn',
+            'meta l4proto udp limit rate 10/second burst 5 packets log prefix "VPN_LOCK_DROP: " level warn',
+        ])
+        body = "\n        ".join(lines)
+        return (
+            "table inet vpn_lock {\n"
+            "    chain output {\n"
+            "        type filter hook output priority 0; policy drop;\n"
+            f"        {body}\n"
+            "    }\n"
+            "}\n"
+        )
 
     def apply_nft_rules(self, iface, dns_via_tunnel, marks):
-        if self.demo_mode:
-            return True
         if self.table_exists():
-            subprocess.run(
-                [self.nft_path, "delete", "table", "inet", "vpn_lock"],
-                capture_output=True,
-                text=True,
-            )
+            self._delete_nft_table()
 
         tun_alive = self.get_iface_ip(iface) is not None
         script = self.build_nft_script(iface, dns_via_tunnel, marks, tun_alive)
         proc = subprocess.run(
-            [self.nft_path, "-f", "-"],
-            input=script,
-            text=True,
-            capture_output=True,
+            [self.nft_path, "-f", "-"], input=script, text=True, capture_output=True
         )
         if proc.returncode != 0:
             self.log(f"[!] nft {proc.stderr.strip()}")
             return False
         return True
-
 
     def _refresh_telemetry(self):
         tun_ip = self.get_iface_ip(self.tun_iface) if self.tun_iface else None
@@ -905,9 +820,7 @@ class VpnLockApp:
 
         if self.is_active:
             marks_txt = ", ".join(self.detected_marks) if self.detected_marks else "none"
-            self.card_nft.update_data(
-                "LOCKED", f"marks: {marks_txt}", PALETTE["olive_bright"], PALETTE["muted"]
-            )
+            self.card_nft.update_data("LOCKED", f"marks: {marks_txt}", PALETTE["olive_bright"], PALETTE["muted"])
         else:
             self.card_nft.update_data("NO TABLE", "marks: ---", PALETTE["muted"], PALETTE["dim"])
 
@@ -948,10 +861,7 @@ class VpnLockApp:
         self.btn_dns_wlan.configure(text=f"allow DNS via physical iface: {state}")
         if self.dns_via_wlan:
             self.btn_dns_wlan.set_colors(
-                bg=PALETTE["fever_bg"],
-                hover_bg="#33250e",
-                fg=PALETTE["fever"],
-                border_color=PALETTE["fever"],
+                bg=PALETTE["fever_bg"], hover_bg="#33250e", fg=PALETTE["fever"], border_color=PALETTE["fever"]
             )
         else:
             self.btn_dns_wlan.set_colors(
@@ -966,30 +876,35 @@ class VpnLockApp:
             self.apply_nft_rules(self.tun_iface, self.dns_via_tunnel, self.detected_marks)
         self._refresh_telemetry()
 
+    def _start_log_thread(self):
+        self.log_running = True
+        self.log_thread = threading.Thread(target=self.tail_kernel_log, daemon=True)
+        self.log_thread.start()
+
+    def _stop_log_thread(self):
+        self.log_running = False
+        if self.journal_proc:
+            try:
+                self.journal_proc.terminate()
+                self.journal_proc.wait(timeout=2)
+            except Exception:
+                pass
+            self.journal_proc = None
+        if self.log_thread and self.log_thread.is_alive():
+            self.log_thread.join(timeout=2)
+
     def toggle_log_pause(self):
         if not self.is_active:
             return
         if not self.log_paused:
             self.log_paused = True
             self.btn_pause_log.configure(text="resume anamnesis")
-            self.log_running = False
-            if self.journal_proc:
-                try:
-                    self.journal_proc.terminate()
-                    self.journal_proc.wait(timeout=2)
-                except Exception:
-                    pass
-                self.journal_proc = None
-            if self.log_thread and self.log_thread.is_alive():
-                self.log_thread.join(timeout=2)
+            self._stop_log_thread()
             self.append_log("[*] anamnesis stopped")
         else:
             self.log_paused = False
             self.btn_pause_log.configure(text="stop anamnesis")
-            self.log_running = True
-            if not self.demo_mode:
-                self.log_thread = threading.Thread(target=self.tail_kernel_log, daemon=True)
-                self.log_thread.start()
+            self._start_log_thread()
             self.append_log("[*] anamnesis resumed")
 
     def start_lock(self):
@@ -1022,12 +937,8 @@ class VpnLockApp:
             self.log("[*] dns fail, fallback to physical iface")
         applied = self.apply_nft_rules(iface, dns_ok, marks)
         if self._closing:
-            if applied and not self.demo_mode:
-                subprocess.run(
-                    [self.nft_path, "delete", "table", "inet", "vpn_lock"],
-                    capture_output=True,
-                    text=True,
-                )
+            if applied:
+                self._delete_nft_table()
             return
         self._ui_queue.put(lambda: self._finish_arm(iface, dns_ok, marks, applied))
 
@@ -1050,22 +961,14 @@ class VpnLockApp:
         self.status_label.configure(
             text="severe paranoid disturbanc3s つ ◕_◕ つ", fg=PALETTE["olive_bright"]
         )
-        self.substatus_label.configure(
-            text="filtering outside noise. only the tunnel exists."
-        )
+        self.substatus_label.configure(text="filtering outside noise. only the tunnel exists.")
         self.btn_start.set_enabled(False)
         self.btn_stop.set_enabled(True)
         self.btn_pause_log.set_enabled(True)
         self.btn_pause_log.configure(text="stop anamnesis")
         self.log_paused = False
 
-        self.log_running = True
-        if self.demo_mode:
-            self._demo_tun_up = True
-            self._schedule_demo_drop()
-        else:
-            self.log_thread = threading.Thread(target=self.tail_kernel_log, daemon=True)
-            self.log_thread.start()
+        self._start_log_thread()
 
         self.monitor_running = True
         self.last_tun_state = self.get_iface_ip(self.tun_iface) is not None
@@ -1078,39 +981,13 @@ class VpnLockApp:
             return
 
         self.monitor_running = False
-        if self.monitor_after_id is not None:
-            try:
-                self.root.after_cancel(self.monitor_after_id)
-            except Exception:
-                pass
-            self.monitor_after_id = None
+        self._cancel_after("monitor_after_id")
 
-        if self._demo_after_id is not None:
-            try:
-                self.root.after_cancel(self._demo_after_id)
-            except Exception:
-                pass
-            self._demo_after_id = None
-
-        self.log_running = False
         self.log_paused = False
-        if self.journal_proc:
-            try:
-                self.journal_proc.terminate()
-                self.journal_proc.wait(timeout=2)
-            except Exception:
-                pass
-            self.journal_proc = None
-        if self.log_thread and self.log_thread.is_alive():
-            self.log_thread.join(timeout=2)
+        self._stop_log_thread()
 
-        if not self.demo_mode:
-            time.sleep(0.1)
-            subprocess.run(
-                [self.nft_path, "delete", "table", "inet", "vpn_lock"],
-                capture_output=True,
-                text=True,
-            )
+        time.sleep(0.1)
+        self._delete_nft_table()
 
         self.append_log("[*] table gone, filter off")
         self.is_active = False
@@ -1126,7 +1003,6 @@ class VpnLockApp:
         self.btn_pause_log.set_enabled(False)
         self.btn_pause_log.configure(text="stop anamnesis")
         self._refresh_telemetry()
-
 
     @staticmethod
     def format_drop_payload(payload):
@@ -1170,41 +1046,11 @@ class VpnLockApp:
             self.journal_proc = None
 
 
-    def _schedule_demo_drop(self):
-        if not self.is_active or not self.demo_mode:
-            return
-        if not self.log_paused:
-            samples = [
-                ("wlp3s0", "UDP", "8.8.8.8", "53"),
-                ("wlp3s0", "TCP", "142.250.74.46", "443"),
-                ("wlp3s0", "UDP", "192.168.1.1", "5353"),
-                ("enp2s0", "TCP", "52.94.236.248", "443"),
-                ("wlp3s0", "UDP", "224.0.0.251", "5353"),
-            ]
-            out_i, proto, dst, dpt = random.choice(samples)
-            payload = f"IN= OUT={out_i} DST={dst} PROTO={proto} DPT={dpt}"
-            self._on_drop_event(time.strftime("%H:%M:%S"), payload)
-
-        delay = random.randint(850, 1900)
-        self._demo_after_id = self.root.after(delay, self._schedule_demo_drop)
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="paranoid-tun — Linux VPN kill-switch GUI")
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Демо-режим (без root и без изменений nftables) для предпросмотра/GIF",
-    )
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = parse_args()
-    if not args.demo and os.geteuid() != 0:
-        print("root needed: sudo python3 paranoid-tun.py  (или --demo для предпросмотра)")
+    if os.geteuid() != 0:
+        print("root needed: sudo python3 paranoid-tun.py")
         sys.exit(1)
 
     root = tk.Tk()
-    app = VpnLockApp(root, demo_mode=args.demo)
+    app = VpnLockApp(root)
     root.mainloop()
